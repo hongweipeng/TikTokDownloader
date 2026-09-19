@@ -31,6 +31,7 @@ from ..tools import (
     Retry,
     beautify_string,
     format_size,
+    format,
 )
 from ..translation import _
 
@@ -814,9 +815,30 @@ class Downloader:
                 folder_name = self.folder_name
             case _:
                 raise DownloaderError
+        folder_name = format.clean_filename_text(folder_name)
+        self.maybe_rename(folder_name)
         folder = self.root.joinpath(folder_name)
         folder.mkdir(exist_ok=True)
         return folder
+
+    def maybe_rename(self, folder_name):
+        """
+        folder_name: UID{id_}_{name}_{mode}
+        """
+        import os
+        split = folder_name.split("_")
+        prefix = split[0]
+        suffix = split[-1]
+        if os.path.exists(self.root):
+            for old_name in os.listdir(self.root):
+                full_path = os.path.join(self.root, old_name)
+                if os.path.isdir(full_path) and old_name.startswith(prefix) and old_name.endswith(suffix) and old_name != folder_name:
+                    # 需要重命名
+                    self.log.info(f"[  提示  ]: 目录重命名: {old_name} -> {folder_name}")
+                    new_path = os.path.join(self.root, folder_name)
+                    os.rename(full_path, new_path)
+
+        return folder_name
 
     def generate_detail_name(self, data: dict) -> str:
         """生成作品文件名称"""

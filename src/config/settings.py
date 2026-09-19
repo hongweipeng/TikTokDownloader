@@ -16,6 +16,49 @@ if TYPE_CHECKING:
 __all__ = ["Settings"]
 
 
+def settings_read_wrapper(origin_method):
+    from functools import wraps
+    @wraps(origin_method)
+    def wrapper(self, *args, **kwargs):
+        settings = origin_method(self, *args, **kwargs)
+        # 处理保存文件的格式
+        settings["name_format"] = "create_time type desc"
+        # 加载额外用户
+        users_filename = "dy-users.txt"
+        users_path = self.root.joinpath(users_filename)
+        if users_path.exists():
+            settings["accounts_urls"] = []  # 清空
+            with users_path.open("r", encoding=self.encode) as f:
+                for line in f:
+                    line = line.strip()
+                    if not line or line.startswith("#"):
+                        continue
+                    splits = line.split("#")
+                    if len(splits) != 2:
+                        continue
+                    link = splits[0].strip()
+                    nickname = splits[1].strip()
+                    # 判断是否存在
+                    ignore = False
+                    for account in settings["accounts_urls"]:
+                        if link == account["url"]:
+                            ignore = True
+                            break
+                    if not ignore:
+                        self.console.info(f"添加用户 {nickname}")
+                        settings["accounts_urls"].append({
+                            "mark": nickname,
+                            "url": link,
+                            "tab": "post",
+                            "earliest": "",
+                            "latest": "",
+                            "enable": True,
+                        })
+        else:
+            self.console.info(f"未找到 {users_filename}，跳过")
+        return settings
+    return wrapper
+
 class Settings:
     encode = "UTF-8-SIG" if system() == "Windows" else "UTF-8"
     default = {
@@ -162,6 +205,7 @@ class Settings:
         )
         return self.default
 
+    @settings_read_wrapper
     def read(self) -> dict:
         """读取配置文件，如果没有配置文件，则生成配置文件"""
         self.compatible()

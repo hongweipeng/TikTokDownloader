@@ -41,6 +41,13 @@ def format_size(size_in_bytes: int) -> str:
         index += 1
     return f"{size_in_bytes:.2f} {units[index]}"
 
+def clean_filename_text(text: str) -> str:
+    """
+    避免生成的文件名包含非法字符
+    保留：数字、大小写字母、中文、下划线、连字符、空格、小数点
+    """
+    import re
+    return re.sub(r'[^0-9a-zA-Z_\-\. \u4e00-\u9fff]', '', text)
 
 if __name__ == "__main__":
     print(format_size(0))
